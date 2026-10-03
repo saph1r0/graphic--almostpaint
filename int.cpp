@@ -167,20 +167,32 @@ void movimiento(int x, int y){
 	glutPostRedisplay();
 }
 
-// Rotar 'angulo' grados respecto al centro: M = T(C) * R * T(-C)
-void rotar(Poligono &pol, float angulo)
-{
-	// TODO Integrante 2
-	(void)pol; (void)angulo;
-	cout << "[Pendiente] rotar() - Integrante 2" << endl;
+void rotar(Poligono &pol, float angulo) {
+    Punto c = obtenerCentro(pol);
+    vector<vector<float>> T_pos = matrizTraslacion(c.x, c.y);
+    vector<vector<float>> R = matrizRotacion(angulo);
+    vector<vector<float>> T_neg = matrizTraslacion(-c.x, -c.y);
+    vector<vector<float>> M = multiplicarMatrices(T_pos, multiplicarMatrices(R, T_neg));
+
+    for (auto &p : pol.P) {
+        float x_new = M[0][0] * p.x + M[0][1] * p.y + M[0][2];
+        float y_new = M[1][0] * p.x + M[1][1] * p.y + M[1][2];
+        p.x = x_new; p.y = y_new;
+    }
 }
 
-// Escalar respecto al centro: M = T(C) * S * T(-C)
-void escalar(Poligono &pol, float escala)
-{
-	// TODO Integrante 2
-	(void)pol; (void)escala;
-	cout << "[Pendiente] escalar() - Integrante 2" << endl;
+void escalar(Poligono &pol, float escala) {
+    Punto c = obtenerCentro(pol);
+    vector<vector<float>> T_pos = matrizTraslacion(c.x, c.y);
+    vector<vector<float>> S = matrizEscala(escala, escala);
+    vector<vector<float>> T_neg = matrizTraslacion(-c.x, -c.y);
+    vector<vector<float>> M = multiplicarMatrices(T_pos, multiplicarMatrices(S, T_neg));
+
+    for (auto &p : pol.P) {
+        float x_new = M[0][0] * p.x + M[0][1] * p.y + M[0][2];
+        float y_new = M[1][0] * p.x + M[1][1] * p.y + M[1][2];
+        p.x = x_new; p.y = y_new;
+    }
 }
 
 // Trasladar con matriz homogenea T(tx, ty) 
