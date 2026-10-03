@@ -94,6 +94,28 @@ void dibujarContorno(const Poligono &pol){
 		          redondear(pol.P[0].x),     redondear(pol.P[0].y));
 	glEnd();
 }
+// Prueba punto-en-poligono (ray casting / paridad):
+// se lanza un rayo horizontal hacia la derecha desde (px,py) y se
+// cuentan los cruces con las aristas. Impar = dentro, par = fuera.
+bool puntoDentro(const Poligono &pol, float px, float py)
+{
+	bool dentro = false;
+	int n = pol.P.size();
+ 
+	for (int i = 0, j = n - 1; i < n; j = i++)
+	{
+		const Punto &A = pol.P[i];
+		const Punto &B = pol.P[j];
+ 
+		if ((A.y > py) != (B.y > py))
+		{
+			float xCruce = A.x + (py - A.y) * (B.x - A.x) / (B.y - A.y);
+			if (px < xCruce)
+				dentro = !dentro;
+		}
+	}
+	return dentro;
+}
 
 void mouse(int button, int state, int x, int y)
 {
