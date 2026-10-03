@@ -167,7 +167,6 @@ void movimiento(int x, int y){
 	glutPostRedisplay();
 }
 
-// TOOOOODO I22222
 // Rotar 'angulo' grados respecto al centro: M = T(C) * R * T(-C)
 void rotar(Poligono &pol, float angulo)
 {
@@ -185,11 +184,13 @@ void escalar(Poligono &pol, float escala)
 }
 
 // Trasladar con matriz homogenea T(tx, ty) 
-void trasladar(Poligono &pol, float tx, float ty)
-{
-	// TODO Integrante 2
-	(void)pol; (void)tx; (void)ty;
-	cout << "[Pendiente] trasladar() - Integrante 2" << endl;
+void trasladar(Poligono &pol, float tx, float ty) {
+    vector<vector<float>> T = matrizTraslacion(tx, ty);
+    for (auto &p : pol.P) {
+        float x_new = T[0][0] * p.x + T[0][1] * p.y + T[0][2];
+        float y_new = T[1][0] * p.x + T[1][1] * p.y + T[1][2];
+        p.x = x_new; p.y = y_new;
+    }
 }
 
 
