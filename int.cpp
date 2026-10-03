@@ -95,6 +95,74 @@ void dibujarContorno(const Poligono &pol){
 	glEnd();
 }
 
+void mouse(int button, int state, int x, int y)
+{
+	if (state != GLUT_DOWN)
+		return;
+ 
+	y = ALTO - y;   // GLUT tiene el origen arriba, OpenGL abajo
+ 
+	if (button == GLUT_LEFT_BUTTON)
+	{
+		Poligono &pol = poligonos[poligonoActual];
+ 
+		// Si NO se esta construyendo un poligono, un clic dentro de
+		// un poligono cerrado lo selecciona (se revisa del ultimo
+		// al primero para elegir el que esta dibujado encima).
+		if (pol.P.empty())
+		{
+			for (int i = (int)poligonos.size() - 1; i >= 0; i--)
+			{
+				if (poligonos[i].cerrado && puntoDentro(poligonos[i], x, y))
+				{
+					poligonoActivo = i;
+					cout << "Poligono " << i + 1
+					     << " seleccionado con el mouse." << endl;
+					actualizarTitulo();
+					glutPostRedisplay();
+					return;
+				}
+			}
+		}
+ 
+		Punto Pi = {(float)x, (float)y};
+		pol.P.push_back(Pi);
+ 
+		cout << "Poligono " << poligonoActual + 1 << " - P" << pol.P.size()
+		     << " = (" << x << ", " << y << ")" << endl;
+	}
+ 
+	if (button == GLUT_RIGHT_BUTTON)
+	{
+		Poligono &pol = poligonos[poligonoActual];
+ 
+		if (pol.P.size() < 3)
+		{
+			cout << "Se necesitan al menos 3 vertices." << endl;
+			return;
+		}
+ 
+		pol.cerrado    = true;
+		poligonoActivo = poligonoActual;   // el recien cerrado queda activo
+ 
+		cout << "Poligono " << poligonoActual + 1 << " cerrado con "
+		     << pol.P.size() << " vertices." << endl;
+ 
+		poligonos.push_back(Poligono());   // espacio para el siguiente
+		poligonoActual = poligonos.size() - 1;
+		actualizarTitulo();
+	}
+ 
+	glutPostRedisplay();
+}
+ 
+void movimiento(int x, int y)
+{
+	Pmouse.x = x;
+	Pmouse.y = ALTO - y;
+	glutPostRedisplay();
+}
+
 
 //integracion
 
