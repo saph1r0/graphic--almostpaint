@@ -46,6 +46,38 @@ int   poligonoActual = 0;     // poligono que se esta CONSTRUYENDO
 int   poligonoActivo = -1;    // poligono SELECCIONADO (-1 = ninguno)
 Punto Pmouse = {0, 0};
 Color colorSeleccionado = {1.0f, 0.0f, 0.0f};
+
+// ---------------------------------------------------------------------------
+// Panel de color con sliders (relleno, Integrante 3)
+// Se abre con la tecla P sobre el poligono activo. Mientras esta abierto los
+// sliders ajustan el RGB y el poligono se rellena en vivo como vista previa;
+// "Rellenar" (o P/Enter) confirma y "Cancelar" (o ESC) revierte.
+// ---------------------------------------------------------------------------
+struct Slider{
+	int   x, y, w, h;   // pista (track) en coordenadas de pantalla
+	float valor;        // 0.0 .. 1.0
+};
+
+const int PANEL_X = 210;
+const int PANEL_Y = 190;
+const int PANEL_W = 380;
+const int PANEL_H = 200;
+
+const int BTN_Y = PANEL_Y + 16;
+const int BTN_W = 110;
+const int BTN_H = 26;
+const int BTN_RELLENAR_X = PANEL_X + 55;
+const int BTN_CANCELAR_X = PANEL_X + PANEL_W - 55 - BTN_W;
+
+Slider sliderR = {PANEL_X + 130, PANEL_Y + 140, 190, 14, 1.0f};
+Slider sliderG = {PANEL_X + 130, PANEL_Y + 102, 190, 14, 0.0f};
+Slider sliderB = {PANEL_X + 130, PANEL_Y +  64, 190, 14, 0.0f};
+
+bool  panelAbierto      = false;
+int   sliderArrastrando = -1;    // 0=R, 1=G, 2=B, -1=ninguno
+int   poligonoObjetivo  = -1;
+Color colorAnterior;
+bool  rellenoAnterior   = false;
  
 int redondear(float v) { return (int)lround(v); }
  
@@ -63,6 +95,151 @@ void actualizarTitulo(){
 	else if (colorSeleccionado.G == 1) t += "verde";
 	else t += "azul";
 	glutSetWindowTitle(t.c_str());
+}
+
+// ---------------------------------------------------------------------------
+// Panel de color: dibujo, hit-testing y logica
+// ---------------------------------------------------------------------------
+int valor255(float v){ return (int)lround(v * 255.0f); }
+
+void rect(int x, int y, int w, int h){
+	glBegin(GL_QUADS);
+	glVertex2i(x,     y);
+	glVertex2i(x + w, y);
+	glVertex2i(x + w, y + h);
+	glVertex2i(x,     y + h);
+	glEnd();
+}
+
+void texto(int x, int y, const string &s){
+	glRasterPos2i(x, y);
+	for (size_t i = 0; i < s.size(); i++)
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, s[i]);
+}
+
+void dibujarSlider(const Slider &s){
+	glColor3f(0.75f, 0.75f, 0.75f);            // pista
+	rect(s.x, s.y, s.w, s.h);
+	glColor3f(0.35f, 0.55f, 0.95f);            // progreso
+	rect(s.x, s.y, (int)(s.w * s.valor), s.h);
+	glColor3f(0.10f, 0.10f, 0.10f);            // knob
+	int kx = s.x + (int)(s.w * s.valor);
+	rect(kx - 3, s.y - 4, 6, s.h + 8);
+}
+
+// Copia el color de los sliders al color actual y al poligono objetivo
+// (vista previa en vivo del relleno).
+void aplicarColorPanel(){
+	Color c = {sliderR.valor, sliderG.valor, sliderB.valor};
+	colorSeleccionado = c;
+	if (poligonoObjetivo >= 0 && poligonoObjetivo < (int)poligonos.size()){
+		poligonos[poligonoObjetivo].color   = c;
+		poligonos[poligonoObjetivo].relleno = true;
+	}
+}
+
+void abrirPanel(){
+	if (panelAbierto || !hayActivo()) return;
+	panelAbierto     = true;
+	poligonoObjetivo = poligonoActivo;
+	Poligono &act    = poligonos[poligonoActivo];
+	colorAnterior    = act.color;
+	rellenoAnterior  = act.relleno;
+	sliderR.valor    = colorSeleccionado.R;
+	sliderG.valor    = colorSeleccionado.G;
+	sliderB.valor    = colorSeleccionado.B;
+	cout << "Panel de color abierto. Ajusta R/G/B y pulsa P o Enter para rellenar."
+	     << endl;
+	glutPostRedisplay();
+}
+
+void confirmarPanel(){
+	if (!panelAbierto) return;
+	aplicarColorPanel();
+	cout << "Poligono " << poligonoObjetivo + 1 << " rellenado con color ("
+	     << valor255(sliderR.valor) << ", " << valor255(sliderG.valor) << ", "
+	     << valor255(sliderB.valor) << ")." << endl;
+	panelAbierto      = false;
+	sliderArrastrando = -1;
+	poligonoObjetivo  = -1;
+	actualizarTitulo();
+	glutPostRedisplay();
+}
+
+void cancelarPanel(){
+	if (!panelAbierto) return;
+	if (poligonoObjetivo >= 0 && poligonoObjetivo < (int)poligonos.size()){
+		poligonos[poligonoObjetivo].color   = colorAnterior;
+		poligonos[poligonoObjetivo].relleno = rellenoAnterior;
+	}
+	panelAbierto      = false;
+	sliderArrastrando = -1;
+	poligonoObjetivo  = -1;
+	actualizarTitulo();
+	glutPostRedisplay();
+}
+
+// Atajos de teclado r/g/b: fijan el color y sincronizan los sliders.
+void colorDesdeTeclas(Color c){
+	colorSeleccionado = c;
+	if (panelAbierto){
+		sliderR.valor = c.R;
+		sliderG.valor = c.G;
+		sliderB.valor = c.B;
+		aplicarColorPanel();
+	}
+	glutPostRedisplay();
+}
+
+void dibujarPanel(){
+	if (!panelAbierto) return;
+
+	// fondo y borde
+	glColor3f(0.95f, 0.95f, 0.95f);
+	rect(PANEL_X, PANEL_Y, PANEL_W, PANEL_H);
+	glColor3f(0.20f, 0.20f, 0.20f);
+	glBegin(GL_LINE_LOOP);
+	glVertex2i(PANEL_X,           PANEL_Y);
+	glVertex2i(PANEL_X + PANEL_W, PANEL_Y);
+	glVertex2i(PANEL_X + PANEL_W, PANEL_Y + PANEL_H);
+	glVertex2i(PANEL_X,           PANEL_Y + PANEL_H);
+	glEnd();
+
+	// titulo
+	glColor3f(0.0f, 0.0f, 0.0f);
+	texto(PANEL_X + 16, PANEL_Y + PANEL_H - 22, "Color de relleno");
+
+	// sliders
+	dibujarSlider(sliderR);
+	dibujarSlider(sliderG);
+	dibujarSlider(sliderB);
+
+	glColor3f(0.0f, 0.0f, 0.0f);
+	texto(sliderR.x - 24, sliderR.y + 1, "R");
+	texto(sliderG.x - 24, sliderG.y + 1, "G");
+	texto(sliderB.x - 24, sliderB.y + 1, "B");
+	texto(sliderR.x + sliderR.w + 8, sliderR.y + 1, to_string(valor255(sliderR.valor)));
+	texto(sliderG.x + sliderG.w + 8, sliderG.y + 1, to_string(valor255(sliderG.valor)));
+	texto(sliderB.x + sliderB.w + 8, sliderB.y + 1, to_string(valor255(sliderB.valor)));
+
+	// muestra (swatch)
+	glColor3f(sliderR.valor, sliderG.valor, sliderB.valor);
+	rect(PANEL_X + 16, PANEL_Y + 52, 70, 44);
+	glColor3f(0.20f, 0.20f, 0.20f);
+	glBegin(GL_LINE_LOOP);
+	glVertex2i(PANEL_X + 16, PANEL_Y + 52);
+	glVertex2i(PANEL_X + 86, PANEL_Y + 52);
+	glVertex2i(PANEL_X + 86, PANEL_Y + 96);
+	glVertex2i(PANEL_X + 16, PANEL_Y + 96);
+	glEnd();
+
+	// botones (mismo gris para ambos)
+	glColor3f(0.80f, 0.80f, 0.80f);
+	rect(BTN_RELLENAR_X, BTN_Y, BTN_W, BTN_H);
+	rect(BTN_CANCELAR_X, BTN_Y, BTN_W, BTN_H);
+	glColor3f(0.0f, 0.0f, 0.0f);
+	texto(BTN_RELLENAR_X + 26, BTN_Y + 9, "Rellenar");
+	texto(BTN_CANCELAR_X + 24, BTN_Y + 9, "Cancelar");
 }
 
 //. soph1|
@@ -119,10 +296,44 @@ bool puntoDentro(const Poligono &pol, float px, float py){
 }
 
 void mouse(int button, int state, int x, int y){
+	y = ALTO - y;   // GLUT tiene el origen arriba, OpenGL abajo!!!!!
+
+	// --- Panel de color abierto: solo interactua el panel ---
+	if (panelAbierto){
+		if (state == GLUT_UP){
+			sliderArrastrando = -1;
+			return;
+		}
+		if (button == GLUT_LEFT_BUTTON){
+			Slider *sls[3] = {&sliderR, &sliderG, &sliderB};
+			for (int i = 0; i < 3; i++){
+				if (x >= sls[i]->x - 4 && x <= sls[i]->x + sls[i]->w + 4 &&
+				    y >= sls[i]->y - 6 && y <= sls[i]->y + sls[i]->h + 6){
+					sliderArrastrando = i;
+					float v = (float)(x - sls[i]->x) / sls[i]->w;
+					sls[i]->valor = (v < 0) ? 0 : (v > 1 ? 1 : v);
+					aplicarColorPanel();
+					glutPostRedisplay();
+					return;
+				}
+			}
+			if (x >= BTN_RELLENAR_X && x <= BTN_RELLENAR_X + BTN_W &&
+			    y >= BTN_Y && y <= BTN_Y + BTN_H){
+				confirmarPanel();
+				return;
+			}
+			if (x >= BTN_CANCELAR_X && x <= BTN_CANCELAR_X + BTN_W &&
+			    y >= BTN_Y && y <= BTN_Y + BTN_H){
+				cancelarPanel();
+				return;
+			}
+		}
+		return;   // clic fuera del panel: se ignora mientras este abierto
+	}
+
 	if (state != GLUT_DOWN)
 		return;
-	y = ALTO - y;   // GLUT tiene el origen arriba, OpenGL abajo!!!!!
- 
+
 	if (button == GLUT_LEFT_BUTTON){
 		Poligono &pol = poligonos[poligonoActual];
 		// Si NO se esta construyendo un poligono, un clic dentro de
@@ -172,6 +383,17 @@ void mouse(int button, int state, int x, int y){
 void movimiento(int x, int y){
 	Pmouse.x = x;
 	Pmouse.y = ALTO - y;
+	glutPostRedisplay();
+}
+
+// Arrastre de sliders del panel (se registra con glutMotionFunc)
+void movimientoBoton(int x, int){
+	if (!panelAbierto || sliderArrastrando < 0) return;
+	Slider *s = (sliderArrastrando == 0) ? &sliderR
+	          : (sliderArrastrando == 1) ? &sliderG : &sliderB;
+	float v = (float)(x - s->x) / s->w;
+	s->valor = (v < 0) ? 0 : (v > 1 ? 1 : v);
+	aplicarColorPanel();
 	glutPostRedisplay();
 }
 
@@ -302,8 +524,10 @@ vector<vector<Arista>> construirET(const Poligono &pol){
 	return ET;
 }
 
+///iiiii3
 void rellenarPoligono(const Poligono &pol)
 {
+	// TODO Integrante 3
 	if (pol.P.size() < 3) return;
 
 	// 1) Edge Table agrupada por scan-line
@@ -397,10 +621,23 @@ void display(){
 		glEnd();
 	}
 
+	// 4) Panel de color (si esta abierto)
+	dibujarPanel();
+
 	glutSwapBuffers();
 }
 
 void teclado(unsigned char tecla, int, int){
+	// --- Panel de color abierto: solo atajos del panel ---
+	if (panelAbierto){
+		if (tecla == 27)                 cancelarPanel();
+		else if (tecla == 13 || tecla == '\r' ||
+		         tecla == 'p' || tecla == 'P') confirmarPanel();
+		else if (tecla == 'r')           colorDesdeTeclas({1.0f, 0.0f, 0.0f});
+		else if (tecla == 'g')           colorDesdeTeclas({0.0f, 1.0f, 0.0f});
+		else if (tecla == 'b')           colorDesdeTeclas({0.0f, 0.0f, 1.0f});
+		return;
+	}
 	// ---- Seleccion por numero ----
 	if (tecla >= '1' && tecla <= '9'){
 		int k = tecla - '1';
@@ -430,11 +667,8 @@ void teclado(unsigned char tecla, int, int){
 		if (tecla == 'S')                 escalar(act, 1.10f);
 		if (tecla == 's')                 escalar(act, 0.90f);
 
-		if (tecla == 'p' || tecla == 'P'){
-			act.color   = colorSeleccionado;
-			act.relleno = true;
-			cout << "Poligono " << poligonoActivo + 1 << " marcado para relleno." << endl;
-		}
+		if (tecla == 'p' || tecla == 'P')
+			abrirPanel();
 	}
 	// ---- Seleccion de color ----
 	if (tecla == 'r') colorSeleccionado = {1.0f, 0.0f, 0.0f};
@@ -457,7 +691,7 @@ void teclado(unsigned char tecla, int, int){
 
 // Flechas -> traslacion del poligono activo (I2)
 void teclasEspeciales(int tecla, int, int){
-	if (!hayActivo()) return;
+	if (panelAbierto || !hayActivo()) return;
 	Poligono &act = poligonos[poligonoActivo];
 	switch (tecla){
 	case GLUT_KEY_LEFT:  trasladar(act, -PASO_TRASLACION, 0); break;
@@ -491,6 +725,7 @@ int main(int argc, char **argv){
 	glutDisplayFunc(display);
 	glutMouseFunc(mouse);
 	glutPassiveMotionFunc(movimiento);
+	glutMotionFunc(movimientoBoton);
 	glutKeyboardFunc(teclado);
 	glutSpecialFunc(teclasEspeciales);
 	glutMainLoop();
