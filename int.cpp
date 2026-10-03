@@ -33,6 +33,14 @@ struct Poligono{
 	Color color   = {1.0f, 0.0f, 0.0f};  // lo usa el Integrante 3
 };
  
+// Arista usada por el relleno scan-line (Edge Table / Edge Active Table).
+struct Arista{
+	int   ymin;
+	int   ymax;
+	float x;
+	float invM;   // 1/pendiente (dx/dy)
+};
+
 vector<Poligono> poligonos;
 int   poligonoActual = 0;     // poligono que se esta CONSTRUYENDO
 int   poligonoActivo = -1;    // poligono SELECCIONADO (-1 = ninguno)
@@ -260,11 +268,89 @@ void trasladar(Poligono &pol, float tx, float ty) {
 }
 
 
-///iiiii3
+// --- RELLENO SCAN-LINE (ET -> EAT), portado de Relleno.cpp ---
+// Construye la Edge Table: para cada scan-line guarda las aristas que
+// comienzan en ella (ymin). Las aristas horizontales no se agregan.
+vector<vector<Arista>> construirET(const Poligono &pol){
+	int n = pol.P.size();
+	vector<vector<Arista>> ET(ALTO);
+	for (int i = 0; i < n; i++){
+		Punto P1 = pol.P[i];
+		Punto P2 = pol.P[(i + 1) % n];   // cierra el poligono
+
+		int y1 = redondear(P1.y);
+		int y2 = redondear(P2.y);
+		if (y1 == y2) continue;          // arista horizontal: se ignora
+
+		Arista A;
+		if (y1 < y2){
+			A.ymin = y1; A.ymax = y2; A.x = P1.x;
+			A.invM = (P2.x - P1.x) / (float)(y2 - y1);
+		}
+		else{
+			A.ymin = y2; A.ymax = y1; A.x = P2.x;
+			A.invM = (P1.x - P2.x) / (float)(y1 - y2);
+		}
+
+		// Las transformaciones pueden sacar vertices de la pantalla;
+		// ET esta indexada por scan-line, asi que recortamos.
+		if (A.ymax < 0 || A.ymin > ALTO - 1) continue;
+		if (A.ymin < 0){ A.x += A.invM * (0 - A.ymin); A.ymin = 0; }
+		if (A.ymax > ALTO) A.ymax = ALTO;
+		ET[A.ymin].push_back(A);
+	}
+	return ET;
+}
+
 void rellenarPoligono(const Poligono &pol)
 {
-	// TODO Integrante 3
-	(void)pol;
+	if (pol.P.size() < 3) return;
+
+	// 1) Edge Table agrupada por scan-line
+	vector<vector<Arista>> ET = construirET(pol);
+	// 2) Edge Active Table: aristas que cruzan la scan-line actual
+	vector<Arista> EAT;
+
+	int ymin = ALTO, ymax = 0;
+	for (auto &p : pol.P){
+		ymin = min(ymin, redondear(p.y));
+		ymax = max(ymax, redondear(p.y));
+	}
+	ymin = max(ymin, 0);
+	ymax = min(ymax, ALTO - 1);
+
+	glPointSize(1.0f);
+	glColor3f(pol.color.R, pol.color.G, pol.color.B);
+	glBegin(GL_POINTS);
+	for (int y = ymin; y < ymax; y++){
+		// Agregar a EAT las aristas que comienzan en y
+		for (int i = 0; i < (int)ET[y].size(); i++)
+			EAT.push_back(ET[y][i]);
+
+		// Eliminar aristas cuyo ymax es y
+		EAT.erase(remove_if(EAT.begin(), EAT.end(),
+		                    [y](const Arista &A){ return A.ymax == y; }),
+		          EAT.end());
+
+		// Ordenar EAT por interseccion x
+		sort(EAT.begin(), EAT.end(),
+		     [](const Arista &A, const Arista &B){ return A.x < B.x; });
+
+		// Pintar entre pares de intersecciones (paridad)
+		for (int i = 0; i + 1 < (int)EAT.size(); i += 2){
+			int x1 = (int)ceil(EAT[i].x);
+			int x2 = (int)floor(EAT[i + 1].x);
+			if (x1 < 0)        x1 = 0;
+			if (x2 > ANCHO - 1) x2 = ANCHO - 1;
+			for (int x = x1; x <= x2; x++)
+				glVertex2i(x, y);
+		}
+
+		// Actualizar x para la siguiente scan-line
+		for (int i = 0; i < (int)EAT.size(); i++)
+			EAT[i].x += EAT[i].invM;
+	}
+	glEnd();
 }
 
 
