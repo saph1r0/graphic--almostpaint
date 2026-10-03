@@ -56,7 +56,9 @@ void actualizarTitulo(){
 	else t += "azul";
 	glutSetWindowTitle(t.c_str());
 }
-//soph1|
+
+//. soph1|
+//  Bresenham, contorno, interaccion con el mouse y seleccion por clic
 
 void Bresenham(int x1, int y1, int x2, int y2){
 	int dx = abs(x2 - x1);
@@ -65,16 +67,11 @@ void Bresenham(int x1, int y1, int x2, int y2){
 	int sy = (y1 < y2) ? 1 : -1;
  
 	int p = dx - dy;
- 
-	while (true)
-	{
+	while (true){
 		glVertex2i(x1, y1);            // se pinta el pixel actual
- 
 		if (x1 == x2 && y1 == y2)
 			break;
- 
 		int p2 = 2 * p;
- 
 		if (p2 > -dy) { p -= dy; x1 += sx; }
 		if (p2 <  dx) { p += dx; y1 += sy; }
 	}
@@ -97,18 +94,14 @@ void dibujarContorno(const Poligono &pol){
 // Prueba punto-en-poligono (ray casting / paridad):
 // se lanza un rayo horizontal hacia la derecha desde (px,py) y se
 // cuentan los cruces con las aristas. Impar = dentro, par = fuera.
-bool puntoDentro(const Poligono &pol, float px, float py)
-{
+bool puntoDentro(const Poligono &pol, float px, float py){
 	bool dentro = false;
 	int n = pol.P.size();
- 
-	for (int i = 0, j = n - 1; i < n; j = i++)
-	{
+	for (int i = 0, j = n - 1; i < n; j = i++){
 		const Punto &A = pol.P[i];
 		const Punto &B = pol.P[j];
  
-		if ((A.y > py) != (B.y > py))
-		{
+		if ((A.y > py) != (B.y > py)){
 			float xCruce = A.x + (py - A.y) * (B.x - A.x) / (B.y - A.y);
 			if (px < xCruce)
 				dentro = !dentro;
@@ -117,26 +110,19 @@ bool puntoDentro(const Poligono &pol, float px, float py)
 	return dentro;
 }
 
-void mouse(int button, int state, int x, int y)
-{
+void mouse(int button, int state, int x, int y){
 	if (state != GLUT_DOWN)
 		return;
+	y = ALTO - y;   // GLUT tiene el origen arriba, OpenGL abajo!!!!!
  
-	y = ALTO - y;   // GLUT tiene el origen arriba, OpenGL abajo
- 
-	if (button == GLUT_LEFT_BUTTON)
-	{
+	if (button == GLUT_LEFT_BUTTON){
 		Poligono &pol = poligonos[poligonoActual];
- 
 		// Si NO se esta construyendo un poligono, un clic dentro de
 		// un poligono cerrado lo selecciona (se revisa del ultimo
 		// al primero para elegir el que esta dibujado encima).
-		if (pol.P.empty())
-		{
-			for (int i = (int)poligonos.size() - 1; i >= 0; i--)
-			{
-				if (poligonos[i].cerrado && puntoDentro(poligonos[i], x, y))
-				{
+		if (pol.P.empty()){
+			for (int i = (int)poligonos.size() - 1; i >= 0; i--){
+				if (poligonos[i].cerrado && puntoDentro(poligonos[i], x, y)){
 					poligonoActivo = i;
 					cout << "Poligono " << i + 1
 					     << " seleccionado con el mouse." << endl;
@@ -154,12 +140,10 @@ void mouse(int button, int state, int x, int y)
 		     << " = (" << x << ", " << y << ")" << endl;
 	}
  
-	if (button == GLUT_RIGHT_BUTTON)
-	{
+	if (button == GLUT_RIGHT_BUTTON){
 		Poligono &pol = poligonos[poligonoActual];
  
-		if (pol.P.size() < 3)
-		{
+		if (pol.P.size() < 3){
 			cout << "Se necesitan al menos 3 vertices." << endl;
 			return;
 		}
@@ -174,23 +158,60 @@ void mouse(int button, int state, int x, int y)
 		poligonoActual = poligonos.size() - 1;
 		actualizarTitulo();
 	}
- 
 	glutPostRedisplay();
 }
  
-void movimiento(int x, int y)
-{
+void movimiento(int x, int y){
 	Pmouse.x = x;
 	Pmouse.y = ALTO - y;
 	glutPostRedisplay();
 }
+
+// TOOOOODO I22222
+// Rotar 'angulo' grados respecto al centro: M = T(C) * R * T(-C)
+void rotar(Poligono &pol, float angulo)
+{
+	// TODO Integrante 2
+	(void)pol; (void)angulo;
+	cout << "[Pendiente] rotar() - Integrante 2" << endl;
+}
+
+// Escalar respecto al centro: M = T(C) * S * T(-C)
+void escalar(Poligono &pol, float escala)
+{
+	// TODO Integrante 2
+	(void)pol; (void)escala;
+	cout << "[Pendiente] escalar() - Integrante 2" << endl;
+}
+
+// Trasladar con matriz homogenea T(tx, ty) 
+void trasladar(Poligono &pol, float tx, float ty)
+{
+	// TODO Integrante 2
+	(void)pol; (void)tx; (void)ty;
+	cout << "[Pendiente] trasladar() - Integrante 2" << endl;
+}
+
+
+///iiiii3
+void rellenarPoligono(const Poligono &pol)
+{
+	// TODO Integrante 3
+	(void)pol;
+}
+
+
+
+
+
+
 
 
 //integracion
 
 void display(){
 	glClear(GL_COLOR_BUFFER_BIT);
-	// 1) Rellenos (cada uno con su propio color)  -> Integrante 3
+	// 1) Rellenos (cada uno con su propio color)  -> I3
 	for (int i = 0; i < (int)poligonos.size(); i++)
 		if (poligonos[i].cerrado && poligonos[i].relleno)
 			rellenarPoligono(poligonos[i]);
@@ -209,7 +230,8 @@ void display(){
 	}
 	// 3) Poligono en construccion + linea de previsualizacion
 	Poligono &pol = poligonos[poligonoActual];
-	if (!pol.cerrado && !pol.P.empty()){
+	if (!pol.cerrado && !pol.P.empty())
+	{
 		glPointSize(1.0f);
 		glColor3f(0.0f, 0.0f, 0.0f);
 		dibujarContorno(pol);
@@ -221,7 +243,77 @@ void display(){
 		          redondear(Pmouse.x), redondear(Pmouse.y));
 		glEnd();
 	}
+
 	glutSwapBuffers();
+}
+
+void teclado(unsigned char tecla, int, int){
+	// ---- Seleccion por numero ----
+	if (tecla >= '1' && tecla <= '9'){
+		int k = tecla - '1';
+		if (k < (int)poligonos.size() && poligonos[k].cerrado){
+			poligonoActivo = k;
+			cout << "Poligono " << k + 1 << " activo" << endl;
+		}
+	}
+	// ---- TAB: siguiente poligono cerrado ----
+	if (tecla == 9 && !poligonos.empty()){
+		int n = poligonos.size();
+		for (int paso = 1; paso <= n; paso++){
+			int k = (max(poligonoActivo, 0) + paso) % n;
+			if (poligonos[k].cerrado){
+				poligonoActivo = k;
+				cout << "Poligono " << k + 1 << " activo" << endl;
+				break;
+			}
+		}
+	}
+	// ---- Transformaciones (I2) y relleno (I3) ----
+	if (hayActivo()){
+		Poligono &act = poligonos[poligonoActivo];
+
+		if (tecla == 'd' || tecla == 'D') rotar(act, -5.0f);
+		if (tecla == 'i' || tecla == 'I') rotar(act,  5.0f);
+		if (tecla == 'S')                 escalar(act, 1.10f);
+		if (tecla == 's')                 escalar(act, 0.90f);
+
+		if (tecla == 'p' || tecla == 'P'){
+			act.color   = colorSeleccionado;
+			act.relleno = true;
+			cout << "Poligono " << poligonoActivo + 1 << " marcado para relleno." << endl;
+		}
+	}
+	// ---- Seleccion de color ----
+	if (tecla == 'r') colorSeleccionado = {1.0f, 0.0f, 0.0f};
+	if (tecla == 'g') colorSeleccionado = {0.0f, 1.0f, 0.0f};
+	if (tecla == 'b') colorSeleccionado = {0.0f, 0.0f, 1.0f};
+	// ---- Limpiar ----
+	if (tecla == 'c' || tecla == 'C'){
+		poligonos.clear();
+		poligonos.push_back(Poligono());
+		poligonoActual = 0;
+		poligonoActivo = -1;
+		cout << "Pantalla limpiada." << endl;
+	}
+	if (tecla == 27)
+		exit(0);
+
+	actualizarTitulo();
+	glutPostRedisplay();
+}
+
+// Flechas -> traslacion del poligono activo (I2)
+void teclasEspeciales(int tecla, int, int){
+	if (!hayActivo()) return;
+	Poligono &act = poligonos[poligonoActivo];
+	switch (tecla){
+	case GLUT_KEY_LEFT:  trasladar(act, -PASO_TRASLACION, 0); break;
+	case GLUT_KEY_RIGHT: trasladar(act,  PASO_TRASLACION, 0); break;
+	case GLUT_KEY_UP:    trasladar(act, 0,  PASO_TRASLACION); break;
+	case GLUT_KEY_DOWN:  trasladar(act, 0, -PASO_TRASLACION); break;
+	}
+
+	glutPostRedisplay();
 }
 
 void inicializar(){
@@ -233,17 +325,21 @@ void inicializar(){
 	glLoadIdentity();
 	poligonos.push_back(Poligono());
 }
- 
+
 int main(int argc, char **argv){
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
 	glutInitWindowSize(ANCHO, ALTO);
 	glutInitWindowPosition(100, 100);
-	glutCreateWindow("Practica Integradora");
- 
+	glutCreateWindow("2integracion");
+
 	inicializar();
 	actualizarTitulo();
- 
-	
+	glutDisplayFunc(display);
+	glutMouseFunc(mouse);
+	glutPassiveMotionFunc(movimiento);
+	glutKeyboardFunc(teclado);
+	glutSpecialFunc(teclasEspeciales);
+	glutMainLoop();
 	return 0;
 }
