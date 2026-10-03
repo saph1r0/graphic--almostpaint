@@ -167,6 +167,57 @@ void movimiento(int x, int y){
 	glutPostRedisplay();
 }
 
+// --- FUNCIONES AUXILIARES DE MATRICES Y CENTROIDE ---
+Punto obtenerCentro(Poligono &pol) {
+    float sumX = 0, sumY = 0;
+    int n = pol.P.size();
+    if (n == 0) return {0, 0};
+    for (auto &p : pol.P) {
+        sumX += p.x;
+        sumY += p.y;
+    }
+    return {sumX / n, sumY / n};
+}
+
+vector<vector<float>> matrizTraslacion(float tx, float ty) {
+    return {
+        {1, 0, tx},
+        {0, 1, ty},
+        {0, 0, 1}
+    };
+}
+
+vector<vector<float>> matrizRotacion(float angulo) {
+    float rad = angulo * M_PI / 180.0;
+    float cosA = cos(rad);
+    float sinA = sin(rad);
+    return {
+        {cosA, -sinA, 0},
+        {sinA,  cosA, 0},
+        {   0,     0, 1}
+    };
+}
+
+vector<vector<float>> matrizEscala(float sx, float sy) {
+    return {
+        {sx,  0, 0},
+        { 0, sy, 0},
+        { 0,  0, 1}
+    };
+}
+
+vector<vector<float>> multiplicarMatrices(const vector<vector<float>> &A, const vector<vector<float>> &B) {
+    vector<vector<float>> C(3, vector<float>(3, 0));
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            for (int k = 0; k < 3; k++) {
+                C[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+    return C;
+}
+
 void rotar(Poligono &pol, float angulo) {
     Punto c = obtenerCentro(pol);
     vector<vector<float>> T_pos = matrizTraslacion(c.x, c.y);
@@ -179,6 +230,7 @@ void rotar(Poligono &pol, float angulo) {
         float y_new = M[1][0] * p.x + M[1][1] * p.y + M[1][2];
         p.x = x_new; p.y = y_new;
     }
+	cout << "Poligono rotado " << angulo << " grados respecto a su centro." << endl;
 }
 
 void escalar(Poligono &pol, float escala) {
@@ -193,6 +245,7 @@ void escalar(Poligono &pol, float escala) {
         float y_new = M[1][0] * p.x + M[1][1] * p.y + M[1][2];
         p.x = x_new; p.y = y_new;
     }
+	cout << "Poligono escalado por un factor de " << escala << "." << endl;
 }
 
 // Trasladar con matriz homogenea T(tx, ty) 
@@ -203,6 +256,7 @@ void trasladar(Poligono &pol, float tx, float ty) {
         float y_new = T[1][0] * p.x + T[1][1] * p.y + T[1][2];
         p.x = x_new; p.y = y_new;
     }
+	cout << "Poligono trasladado (dx: " << tx << ", dy: " << ty << ")." << endl;
 }
 
 
