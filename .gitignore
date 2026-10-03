@@ -1,0 +1,13 @@
+# Ejecutables y objetos
+*.exe
+*.o
+*.obj
+integrado
+# Archivos de IDE
+*.layout
+*.depend
+*.cbp
+.vscode/
+.vs/
+bin/
+obj/
