@@ -5,7 +5,7 @@ transformaciones con coordenadas homogéneas y relleno Scan-Line con ET y EAT.
 
 ## Compilar
 
-Linux: `g++ Integrado.cpp -o integrado -lGL -lGLU -lglut`
+Linux: `g++ main.cpp -o main -lGL -lGLU -lglut`
 
 Windows (Dev-C++ / Code::Blocks): enlazar con `freeglut`, `opengl32` y `glu32`.
 
